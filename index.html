@@ -157,11 +157,18 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
   background:#fff;font-family:inherit;color:var(--ink);
 }
 .f textarea{resize:vertical;min-height:44px}
-.f input[type=date]{min-height:40px;color:var(--ink);appearance:none}
-.f input[type=date]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
+.f input[type=date],.f input[type=datetime-local]{min-height:40px;color:var(--ink);appearance:none}
+.f input[type=date]::-webkit-calendar-picker-indicator,.f input[type=datetime-local]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
 .chk{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
 .chk label{display:flex;align-items:center;gap:8px;font-size:.82rem;background:#faf6f6;padding:8px 10px;border-radius:8px;border:1px solid var(--line);cursor:pointer}
 .chk input{width:17px;height:17px;accent-color:var(--maroon)}
+.f .miss, .f input.miss, .f select.miss, .f textarea.miss{border-color:var(--red)!important;background:var(--red-bg)}
+.f input.miss, .f select.miss, .f textarea.miss{box-shadow:0 0 0 2px rgba(192,54,44,.15)}
+.missbox{background:var(--red-bg);border:1.5px solid var(--red);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.82rem;color:#7a1e17}
+.missbox b{color:var(--red)}
+.missbox ul{margin:8px 0 6px 18px;padding:0}
+.missbox li{margin:2px 0}
+.missbox .hint{display:block;margin-top:6px;font-size:.76rem;color:#8a5a2a}
 
 /* Action bar */
 .actions{
@@ -277,10 +284,10 @@ const OPT = {
   organism:['','MRSA','Staph. aureus','P.Aeruginosa - MRO','P.Aeruginosa - Non MRO',
     'K.Pneumo - ESBL','K.Pneumo - Non ESBL','E.coli - ESBL','E.coli - Non ESBL',
     'CON Staph','Acineto sp- MRO','Acineto sp- Non MRO','Enterobacter sp','CRE','Others'],
-  abGroup:['','Aminoglycosides','Carbapenems','Cephalosporins','Penicillins','Glycopeptides',
+  abGroup:['','NA','Aminoglycosides','Carbapenems','Cephalosporins','Penicillins','Glycopeptides',
     'B-lactam','Colistin','Fluroquinolones','Others'],
-  abInd:['','Empirical','Therapeutic','Prophylaxis'],
-  abDur:['','< 3 days','3 to 7 days','> 7days'],
+  abInd:['','NA','Empirical','Therapeutic','Prophylaxis'],
+  abDur:['','NA','< 3 days','3 to 7 days','> 7days'],
   outcome:['','ALIVE','DIED'],
   finalDx:['','CLABSI','NON CLABSI'],
 };
@@ -405,10 +412,28 @@ async function openDetail(no){
     document.getElementById('formBody').innerHTML='<div class="empty">'+err.message+'</div>';
   }
 }
-function closeModal(){
+function closeModal(force){
+  // Kalau ada perubahan belum simpan, minta pengesahan dulu
+  if(!force && dirtySinceOpen()){
+    if(!confirm('Tutup borang? Perubahan yang belum disimpan akan hilang.')) return;
+  }
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow='';
   current=null;
+  const b=document.getElementById('missBox'); if(b) b.remove();
+}
+
+/* Semak sama ada borang berubah berbanding data asal */
+function dirtySinceOpen(){
+  if(!current) return false;
+  const now=collect();
+  for(const k in now){
+    let orig=current[k]==null?'':String(current[k]).trim();
+    // normalize tarikh ke format yang sama utk banding
+    let val=String(now[k]||'').trim();
+    if(val!==orig && !(val===''&&orig==='')) return true;
+  }
+  return false;
 }
 
 /* ====== BUILD FORM ====== */
@@ -440,6 +465,36 @@ function fromISO(iso){
   const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(!m) return iso;
   return `${Number(m[2])}/${Number(m[3])}/${m[1].slice(2)}`;
+}
+/* Datetime picker utk Date of Sample (ada masa) */
+function dtF(key,label,full){
+  const raw=current[key]==null?'':String(current[key]).trim();
+  const iso=toISOdt(raw);
+  return `<div class="f ${full?'full':''}"><label>${label}</label>`+
+    `<input id="fld_${key}" type="datetime-local" value="${iso}" data-dtfield="1"></div>`;
+}
+/* "7/1/26 14:02" atau ISO -> "2026-07-01T14:02" utk datetime-local */
+function toISOdt(s){
+  if(!s) return '';
+  // sudah ISO penuh? (2026-07-24T14:50:15.000Z)
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}`;
+  // format sheet M/D/YY HH:MM
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if(m){
+    let mo=m[1].padStart(2,'0'),d=m[2].padStart(2,'0'),y=m[3];
+    if(y.length===2)y='20'+y;
+    let hh=(m[4]||'00').padStart(2,'0'),mm=(m[5]||'00').padStart(2,'0');
+    return `${y}-${mo}-${d}T${hh}:${mm}`;
+  }
+  return '';
+}
+/* "2026-07-01T14:02" -> "7/1/26 14:02" (format sheet) */
+function fromISOdt(iso){
+  if(!iso) return '';
+  const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(!m) return iso;
+  return `${Number(m[2])}/${Number(m[3])}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
 }
 function sel(key,label,opts,full){
   const v=current[key]==null?'':current[key];
@@ -523,7 +578,7 @@ function buildForm(r){
   </div></div>
 
   <div class="grp"><div class="gh">Microbiology & Outcome</div><div class="gb">
-    ${txt('sampleDate','Date of Sample',true)}
+    ${dtF('sampleDate','Date of Sample (tarikh & masa)',true)}
     ${sel('organism','Isolated Organism',OPT.organism,true)}
     ${sel('outcome','Outcome',OPT.outcome)}
     ${sel('contribDeath','BSI Contributed to Death',OPT.ynb)}
@@ -531,6 +586,57 @@ function buildForm(r){
   </div></div>
   `;
   document.getElementById('formBody').innerHTML=html;
+}
+
+/* ====== VALIDATION: mesti lengkap sebelum Mark Complete ====== */
+/* Field wajib. Utk antibiotic: kalau Group = NA, date/ind/dur/policy tak wajib. */
+function validateComplete(d){
+  const missing=[];
+  const need={
+    name:'Name', dept:'Department', ward:'Ward', ic:'No. IC',
+    age:'Age', ageGroup:'Age Group', gender:'Gender', admDate:'Date of Admission',
+    diagnosis:'Clinical Diagnosis',
+    sampleDate:'Date of Sample', organism:'Isolated Organism',
+    outcome:'Outcome', contribDeath:'BSI Contributed to Death', finalDx:'Diagnosis'
+  };
+  for(const k in need){
+    if(!String(d[k]||'').trim()) missing.push(need[k]);
+  }
+  // Antibiotic 1 - wajib pilih Group (isi NA kalau takde antibiotik)
+  if(!String(d.ab1grp||'').trim()) missing.push('Antibiotic 1 · Group (pilih NA jika tiada)');
+  else if(d.ab1grp!=='NA'){
+    if(!String(d.ab1date||'').trim()) missing.push('Antibiotic 1 · Date commenced');
+    if(!String(d.ab1ind||'').trim())  missing.push('Antibiotic 1 · Indication');
+    if(!String(d.ab1dur||'').trim())  missing.push('Antibiotic 1 · Duration');
+    if(!String(d.ab1policy||'').trim())missing.push('Antibiotic 1 · Meet Local Policy');
+  }
+  // Antibiotic 2 - kalau Group diisi & bukan NA, baru wajib butiran
+  if(String(d.ab2grp||'').trim() && d.ab2grp!=='NA'){
+    if(!String(d.ab2date||'').trim()) missing.push('Antibiotic 2 · Date commenced');
+    if(!String(d.ab2ind||'').trim())  missing.push('Antibiotic 2 · Indication');
+    if(!String(d.ab2dur||'').trim())  missing.push('Antibiotic 2 · Duration');
+    if(!String(d.ab2policy||'').trim())missing.push('Antibiotic 2 · Meet Local Policy');
+  }
+  return missing;
+}
+
+/* Highlight field kosong dlm borang */
+function markMissing(d){
+  document.querySelectorAll('.f .miss').forEach(e=>e.classList.remove('miss'));
+  const map={name:'name',dept:'dept',ward:'ward',ic:'ic',age:'age',ageGroup:'ageGroup',
+    gender:'gender',admDate:'admDate',diagnosis:'diagnosis',sampleDate:'sampleDate',
+    organism:'organism',outcome:'outcome',contribDeath:'contribDeath',finalDx:'finalDx',
+    ab1grp:'ab1grp',ab1date:'ab1date',ab1ind:'ab1ind',ab1dur:'ab1dur',ab1policy:'ab1policy',
+    ab2date:'ab2date',ab2ind:'ab2ind',ab2dur:'ab2dur',ab2policy:'ab2policy'};
+  for(const k in map){
+    const el=document.getElementById('fld_'+k);
+    if(el && !String(d[k]||'').trim()){
+      // antibiotic detail tak highlight kalau group NA
+      if((k.startsWith('ab1')&&k!=='ab1grp'&&d.ab1grp==='NA')) continue;
+      if((k.startsWith('ab2')&&k!=='ab2grp'&&(d.ab2grp==='NA'||!String(d.ab2grp||'').trim()))) continue;
+      el.classList.add('miss');
+    }
+  }
 }
 
 /* ====== SAVE ====== */
@@ -547,17 +653,31 @@ function collect(){
     const el=document.getElementById('fld_'+k);
     if(!el) return;
     if(el.type==='checkbox') d[k]=el.checked?'YES':'';
-    else if(el.dataset && el.dataset.datefield) d[k]=fromISO(el.value); // date -> M/D/YY
+    else if(el.dataset && el.dataset.dtfield) d[k]=fromISOdt(el.value);   // datetime -> M/D/YY HH:MM
+    else if(el.dataset && el.dataset.datefield) d[k]=fromISO(el.value);    // date -> M/D/YY
     else d[k]=el.value;
   });
   return d;
 }
 
 async function save(mode){
+  const data=collect();
+  // Kalau nak Mark Complete, semak dulu semua lengkap
+  if(mode==='complete'){
+    const missing=validateComplete(data);
+    if(missing.length){
+      markMissing(data);
+      const first=document.querySelector('.f .miss');
+      if(first) first.scrollIntoView({block:'center',behavior:'smooth'});
+      toast('Belum lengkap: '+missing.length+' medan perlu diisi');
+      showMissingBox(missing);
+      return;
+    }
+  }
   const bd=document.getElementById('btnDraft'), bs=document.getElementById('btnSave');
   bd.disabled=bs.disabled=true;
   const payload={
-    action:'save', no:current.no, data:collect(),
+    action:'save', no:current.no, data:data,
     status: mode==='complete'?'complete':'draft',
     filledBy: USER?USER.name:''
   };
@@ -574,12 +694,27 @@ async function save(mode){
       row.name=payload.data.name; row.ward=payload.data.ward;
       row.dept=payload.data.dept; row.organism=payload.data.organism; row.ic=payload.data.ic; }
     toast(mode==='complete'?'✓ Marked Complete':'Draft saved');
-    closeModal(); render();
+    closeModal(true); render();
   }catch(err){
     toast('Gagal simpan: '+err.message);
   }finally{
     bd.disabled=bs.disabled=false;
   }
+}
+
+/* Papar senarai medan belum lengkap di atas borang */
+function showMissingBox(list){
+  let box=document.getElementById('missBox');
+  if(!box){
+    box=document.createElement('div');
+    box.id='missBox'; box.className='missbox';
+    const fb=document.getElementById('formBody');
+    fb.insertBefore(box, fb.firstChild);
+  }
+  box.innerHTML='<b>⚠ Belum boleh Tandai Lengkap.</b> Medan wajib diisi:<ul>'+
+    list.map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
+    '<span class="hint">Tip: kalau pesakit tiada antibiotik, pilih <b>NA</b> pada Antibiotic 1 · Group.</span>';
+  box.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
 
 /* ====== TOAST ====== */
@@ -590,9 +725,8 @@ function toast(msg){
   clearTimeout(tT); tT=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
-document.getElementById('modal').addEventListener('click',e=>{
-  if(e.target.id==='modal') closeModal();
-});
+/* Tekan LUAR kotak TIDAK tutup modal (elak hilang data belum simpan).
+   Tutup hanya guna butang ✕. */
 
 /* ====== GO ====== */
 initSplash();
