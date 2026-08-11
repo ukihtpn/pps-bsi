@@ -140,10 +140,12 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
 @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:translateY(0);opacity:1}}
 .shead{
   position:sticky;top:0;background:linear-gradient(135deg,var(--maroon),var(--maroon-dk));
-  color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;
+  color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:5;
 }
-.shead h2{font-size:1rem;font-weight:700}
-.shead .x{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:1.1rem;cursor:pointer}
+.shead>div:first-child{min-width:0;flex:1}
+.shead h2{font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shead .x{background:rgba(255,255,255,.25);border:none;color:#fff;min-width:44px;height:44px;border-radius:10px;font-size:1.3rem;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700}
+.shead .x:active{background:rgba(255,255,255,.4)}
 .shead .sm{font-size:.74rem;opacity:.85;margin-top:2px}
 .form{padding:16px 18px}
 .grp{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
@@ -253,7 +255,7 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
         <h2 id="mName">—</h2>
         <div class="sm" id="mSub">—</div>
       </div>
-      <button class="x" onclick="closeModal()">✕</button>
+      <button class="x" onclick="closeModal()" title="Tutup / Batal" aria-label="Tutup">✕</button>
     </div>
     <div class="form" id="formBody"></div>
     <div class="actions">
