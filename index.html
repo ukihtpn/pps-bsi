@@ -241,6 +241,13 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
 .bar .fill{height:100%;background:linear-gradient(90deg,var(--maroon),#a33b48);border-radius:6px;min-width:2px;transition:width .5s}
 .bar .fill.gold{background:linear-gradient(90deg,#b8892b,#d9a83f)}
 .bar .fill.teal{background:linear-gradient(90deg,#3a7d7d,#5ba3a3)}
+/* vertical bar chart */
+.vchart{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;padding:8px 2px 0;min-height:180px}
+.vcol{flex:0 0 auto;width:44px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.vval{font-size:.66rem;font-weight:700;color:var(--maroon);margin-bottom:3px;white-space:nowrap}
+.vbarwrap{height:132px;display:flex;align-items:flex-end}
+.vbar{width:24px;background:linear-gradient(180deg,#a33b48,var(--maroon));border-radius:5px 5px 0 0;min-height:2px;transition:height .5s}
+.vlab{font-size:.6rem;color:var(--muted);margin-top:5px;text-align:center;line-height:1.1;transform:rotate(-35deg);transform-origin:center;white-space:nowrap;height:24px}
 .donut-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .donut{width:120px;height:120px;flex:0 0 auto}
 .dlegend{font-size:.8rem;display:flex;flex-direction:column;gap:6px}
@@ -999,10 +1006,39 @@ async function loadDashboard(){
   }
 }
 
+/* Pendekkan nama department utk label paksi-x */
+function shortDept(name){
+  const m={'Anaesthesiology':'Anaest','Cardiaology':'Cardio','Dermatology':'Derma',
+    'Haemotology':'Haem','Medical':'Med','Nephrology':'Nephro','O&G':'O&G',
+    'Oncology':'Onco','Orthopaedic':'Ortho','Others':'Others','Paediatric':'Paed',
+    'Surgical':'Surg','Urology':'Uro'};
+  return m[name]||name;
+}
+
 function bar(label,count,total,cls){
   const pct= total>0 ? Math.round(count/total*1000)/10 : 0;
   return `<div class="bar"><div class="lab"><span>${label}</span><b>${count} (${pct}%)</b></div>`+
     `<div class="track"><div class="fill ${cls||''}" style="width:${pct}%"></div></div></div>`;
+}
+
+/* Vertical bar chart — utk rate/department.
+   items = [{label, value}], unit = teks selepas nilai (contoh '') */
+function vbars(items, unit, emptyMsg){
+  const vals=items.map(x=>x.value==null?0:x.value);
+  const max=Math.max(1, ...vals);
+  const hasData=items.some(x=>x.value!=null && x.value>0);
+  if(!hasData) return `<div class="dnote">${emptyMsg||'Tiada nilai lagi — key-in denominator (admission) dalam Sect B dulu.'}</div>`;
+  const cols=items.map(x=>{
+    const v=x.value==null?null:x.value;
+    const h= v==null?0:Math.round(v/max*130);
+    const lbl= v==null?'–':(Math.round(v*100)/100)+(unit||'');
+    return `<div class="vcol">
+      <div class="vval">${lbl}</div>
+      <div class="vbarwrap"><div class="vbar" style="height:${h}px"></div></div>
+      <div class="vlab">${x.label}</div>
+    </div>`;
+  }).join('');
+  return `<div class="vchart">${cols}</div>`;
 }
 
 function renderDashboard(d){
@@ -1016,6 +1052,13 @@ function renderDashboard(d){
     'Nephrology','O&G','Oncology','Orthopaedic','Others','Paediatric','Surgical','Urology'];
   const deptBars=deptFull.filter(x=>(d.dept&&d.dept[x])).map(x=>bar(x,d.dept[x],total)).join('')
     || '<div class="dnote">Tiada kes ikut department lagi.</div>';
+
+  // Rate & % ikut department dari Sect B (kolum E & C). Buang baris 'Hospital'.
+  const dr=(d.deptRate||[]).filter(r=>r.dept.toUpperCase()!=='HOSPITAL');
+  const rateChart=vbars(dr.map(r=>({label:shortDept(r.dept),value:r.rate})),'',
+    'Rate belum ada — key-in Total Admission department dalam Sect B (kolum D) dulu.');
+  const pctChart=vbars(dr.map(r=>({label:shortDept(r.dept),value:r.pct})),'%',
+    'Peratus belum ada.');
 
   const invLabels=['≥48h admission','Dialysis 30d','Surgery 30d','Ambulatory onco','Surgical implant','ICU≥24h','Newborn≥24h','Antibiotic resistance'];
   const invBars=invLabels.map((l,i)=>bar(l,(d.invest&&d.invest[i])||0,total,'teal')).join('');
@@ -1071,6 +1114,18 @@ function renderDashboard(d){
     </div>
 
     <div class="dsec">
+      <h3>BSI Prevalence Rate per 100 Admission — by Department</h3>
+      ${rateChart}
+      <div class="dnote">Rate dibaca dari tab BSI-Sect B (kolum E). Akan keluar bila Total Admission department dah di-key-in dalam sheet.</div>
+    </div>
+
+    <div class="dsec">
+      <h3>Percentage of BSI Cases — by Department</h3>
+      ${pctChart}
+      <div class="dnote">Peratus dibaca dari tab BSI-Sect B (kolum C).</div>
+    </div>
+
+    <div class="dsec">
       <h3>Investigation Criteria</h3>
       ${invBars}
     </div>
@@ -1100,21 +1155,9 @@ function renderDashboard(d){
       ${bar('Died',d.outcome.died||0,aliveDied)}
     </div>
 
-    <div class="dsec">
-      <h3>Kemaskini Sheet Laporan (MOH)</h3>
-      <div class="wardpick">
-        <select id="wardSel">${wardOpts||'<option>Tiada ward</option>'}</select>
-        <button class="recalc-btn sec" onclick="recomputeWard()">Isi Sect A (ward)</button>
-      </div>
-      <button class="recalc-btn" onclick="recomputeB()" style="width:100%">⟳ Auto-isi Sect B (Total Hospital)</button>
-      <div class="dnote" id="recalcNote">
-        Butang ni kira semula dari data pesakit &amp; tulis ke tab BSI-Sect A / BSI-Sect B.
-        <b>Department, Total Admission &amp; Patient Days awak key-in manual</b> dalam sheet (app tak sentuh).
-      </div>
-    </div>
-
     <div class="dnote" style="text-align:center;padding-bottom:8px">
-      Data dikira terus dari senarai pesakit. Tekan tab semula untuk refresh.
+      Sheet laporan MOH (Sect A &amp; Sect B) dikemaskini automatik setiap kali data pesakit disimpan.
+      Rate &amp; peratus akan keluar bila Total Admission di-key-in dalam Sect B.
     </div>
   `;
 }
