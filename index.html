@@ -621,6 +621,12 @@ function toISO(s){
     if(y.length===2) y='20'+y;
     return `${y}-${mo}-${d}`;
   }
+  // fallback: Date.parse (handle format toString GAS)
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime())){
+    const p=(n)=>String(n).padStart(2,'0');
+    return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`;
+  }
   return '';
 }
 /* "2026-07-01" -> "7/1/26" (format sheet) */
@@ -640,16 +646,23 @@ function dtF(key,label,full){
 /* "7/1/26 14:02" atau ISO -> "2026-07-01T14:02" utk datetime-local */
 function toISOdt(s){
   if(!s) return '';
-  // sudah ISO penuh? (2026-07-24T14:50:15.000Z)
+  s=String(s).trim();
+  // sudah ISO penuh? (2026-07-24T14:50:15.000Z atau 2026-07-24T14:50)
   let m=s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if(m) return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}`;
   // format sheet M/D/YY HH:MM
-  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ ,]+(\d{1,2}):(\d{2}))?/);
   if(m){
     let mo=m[1].padStart(2,'0'),d=m[2].padStart(2,'0'),y=m[3];
     if(y.length===2)y='20'+y;
     let hh=(m[4]||'00').padStart(2,'0'),mm=(m[5]||'00').padStart(2,'0');
     return `${y}-${mo}-${d}T${hh}:${mm}`;
+  }
+  // fallback: cuba Date.parse (handle "Wed Jul 01 2026 14:02:00 GMT+0800", dll)
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime())){
+    const p=(n)=>String(n).padStart(2,'0');
+    return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}T${p(dt.getHours())}:${p(dt.getMinutes())}`;
   }
   return '';
 }
