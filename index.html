@@ -176,6 +176,9 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
 .devbox{background:#faf6f6;border:1px solid var(--line);border-left:3px solid var(--maroon);border-radius:10px;padding:10px 12px;margin-top:10px}
 .devt{font-size:.74rem;font-weight:700;color:var(--maroon);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 .devg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nachk{display:flex!important;align-items:center;gap:6px;margin-top:5px;font-size:.72rem!important;color:var(--muted);font-weight:500!important;cursor:pointer}
+.nachk input{width:15px;height:15px;accent-color:var(--maroon);cursor:pointer}
+.f input[type=date]:disabled{background:#f0eeee;color:#aaa}
 /* Auto BSI type button + hint */
 .autobtn{width:100%;padding:11px;border:1.5px solid var(--maroon);background:#fff;color:var(--maroon);border-radius:9px;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit}
 .autobtn:active{background:#f3e9e9}
@@ -425,6 +428,8 @@ const OPT = {
   gender:['','MALE','FEMALE'],
   ynb:['','YES','NO'],
   ageGroup:['','<10 YEAR','11-20 YEAR','21-30 YEAR','31-40 YEAR','41-50 YEAR','51-60 YEAR','>60 YEAR','NA'],
+  dept:['','ANAEST','CARDIO','DERMATO','HAEMATO','MED','NEPHRO',
+    'O&G','ONCO','ORTHO','PAED','SURG','URO','OTHERS'],
   organism:['','MRSA','Staph. aureus','P.Aeruginosa - MRO','P.Aeruginosa - Non MRO',
     'K.Pneumo - ESBL','K.Pneumo - Non ESBL','E.coli - ESBL','E.coli - Non ESBL',
     'CON Staph','Acineto sp- MRO','Acineto sp- Non MRO','Enterobacter sp','CRE','Others'],
@@ -433,7 +438,7 @@ const OPT = {
   abInd:['','NA','Empirical','Therapeutic','Prophylaxis'],
   abDur:['','NA','< 3 days','3 to 7 days','> 7days'],
   outcome:['','ALIVE','DIED'],
-  finalDx:['','CLABSI','NON CLABSI'],
+  finalDx:['','CLABSI','NON CLABSI','NA'],
   yn:['','YES','NO'],
   bsiType:['','BSI-A1','BSI-A2','BSI-B','CVC-BSI','NA'],
   bsiCategory:['','Primary','Secondary','NA'],
@@ -491,8 +496,9 @@ async function load(){
   }
 }
 
-function statusClass(s){ return s==='complete'?'g':(s==='draft'?'y':'r'); }
-function statusLabel(s){ return s==='complete'?'Complete':(s==='draft'?'In Progress':'Not Started'); }
+function normStatus(s){ return String(s==null?'':s).trim().toLowerCase(); }
+function statusClass(s){ const n=normStatus(s); return n==='complete'?'g':(n==='draft'?'y':'r'); }
+function statusLabel(s){ const n=normStatus(s); return n==='complete'?'Complete':(n==='draft'?'In Progress':'Not Started'); }
 
 /* ====== RENDER LIST ====== */
 function render(){
@@ -504,8 +510,8 @@ function render(){
 
   // stats (ikut julat staff, sebelum search filter)
   const tot=rows.length;
-  const g=rows.filter(r=>r.status==='complete').length;
-  const y=rows.filter(r=>r.status==='draft').length;
+  const g=rows.filter(r=>normStatus(r.status)==='complete').length;
+  const y=rows.filter(r=>normStatus(r.status)==='draft').length;
   const rr=tot-g-y;
   document.getElementById('sReview').textContent=tot;
   document.getElementById('sDone').textContent=g;
@@ -598,17 +604,23 @@ function dateF(key,label,full){
   return `<div class="f ${full?'full':''}"><label>${label}</label>`+
     `<input id="fld_${key}" type="date" value="${iso}" data-datefield="1"></div>`;
 }
-/* "7/1/26" atau "7/1/26 14:02" -> "2026-07-01" utk <input type=date> */
+/* "7/1/26", "7/1/26 14:02", "2026-07-01", atau ISO penuh
+   "2026-07-01T00:00:00.000Z" (dari Date object Google Sheets) -> "2026-07-01" utk <input type=date> */
 function toISO(s){
   if(!s) return '';
+  s=String(s).trim();
+  // ISO / ISO penuh dgn masa (cth: 2026-07-01T00:00:00.000Z) - cek dulu SEBELUM split ruang,
+  // sebab format M/D/YY pun ada ruang (tarikh + masa) yang boleh silap match.
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // format sheet M/D/YY atau "M/D/YY HH:MM"
   s=s.split(' ')[0];
-  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if(m){
     let mo=m[1].padStart(2,'0'), d=m[2].padStart(2,'0'), y=m[3];
     if(y.length===2) y='20'+y;
     return `${y}-${mo}-${d}`;
   }
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   return '';
 }
 /* "2026-07-01" -> "7/1/26" (format sheet) */
@@ -648,10 +660,26 @@ function fromISOdt(iso){
   if(!m) return iso;
   return `${Number(m[2])}/${Number(m[3])}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
 }
-function sel(key,label,opts,full){
-  const v=current[key]==null?'':current[key];
-  const o=opts.map(x=>`<option ${String(x)===String(v)?'selected':''} value="${esc(x)}">${x===''?'—':x}</option>`).join('');
-  return `<div class="f ${full?'full':''}"><label>${label}</label><select id="fld_${key}">${o}</select></div>`;
+function sel(key,label,opts,full,onchange){
+  let raw=current[key]==null?'':String(current[key]).trim();
+  // Kalau nilai nampak macam tarikh/ISO (data rosak/tergeser), abaikan — jangan
+  // masukkan dlm senarai pilihan. Biar kosong supaya user pilih semula.
+  const looksDate = /^\d{4}-\d{2}-\d{2}T/.test(raw) || /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(raw)
+                    || /\d{4}-\d{2}-\d{2}/.test(raw);
+  if(looksDate) raw='';
+  let options=opts.slice();
+  // Kalau value dlm sheet tak match mana-mana option (ruang tambahan/ejaan lama),
+  // tambah sbg option supaya tak hilang — TAPI hanya kalau ia teks munasabah
+  // (bukan tarikh, panjang < 40 aksara).
+  if(raw && raw.length<40 && !options.some(x=>String(x).trim().toLowerCase()===raw.toLowerCase())){
+    options.push(raw);
+  }
+  const o=options.map(x=>{
+    const match=String(x).trim().toLowerCase()===raw.toLowerCase();
+    return `<option ${match?'selected':''} value="${esc(x)}">${x===''?'—':x}</option>`;
+  }).join('');
+  const oc=onchange?` onchange="${onchange}"`:'';
+  return `<div class="f ${full?'full':''}"><label>${label}</label><select id="fld_${key}"${oc}>${o}</select></div>`;
 }
 function area(key,label){
   const v=current[key]==null?'':current[key];
@@ -674,10 +702,26 @@ function devBlock(id,title,checkedVal,insertKey,removeKey,siteKey,siteOpts){
   const on = v==='YES'||v==='TRUE'||v==='1'||v==='✓'||v==='X';
   return `<div class="devbox" id="dev_${id}" style="display:${on?'block':'none'}">`+
     `<div class="devt">${title}</div><div class="devg">`+
-    dateF(insertKey,'Tarikh Masuk (Insert)')+
-    dateF(removeKey,'Tarikh Cabut (Remove)')+
+    dateFNA(insertKey,'Tarikh Masuk (Insert)')+
+    dateFNA(removeKey,'Tarikh Cabut (Remove)')+
     sel(siteKey,'Lokasi (Site)',siteOpts,true)+
     `</div></div>`;
+}
+
+/* Date picker + checkbox NA. Kalau NA ditick, tarikh disable & simpan 'NA'. */
+function dateFNA(key,label){
+  const raw=String(current[key]==null?'':current[key]).trim();
+  const isNA = raw.toUpperCase()==='NA';
+  const iso = isNA ? '' : toISO(raw);
+  return `<div class="f"><label>${label}</label>`+
+    `<input id="fld_${key}" type="date" value="${iso}" data-datefield="1" ${isNA?'disabled':''}>`+
+    `<label class="nachk"><input type="checkbox" id="na_${key}" ${isNA?'checked':''} `+
+    `onchange="toggleNA('${key}',this.checked)"> Tiada tarikh (NA)</label></div>`;
+}
+/* Toggle NA: disable/enable date input */
+function toggleNA(key,isNA){
+  const inp=document.getElementById('fld_'+key);
+  if(inp){ inp.disabled=isNA; if(isNA) inp.value=''; }
 }
 /* Toggle papar/sembunyi blok device */
 function toggleDev(id,show){
@@ -692,7 +736,7 @@ function buildForm(r){
   const html=`
   <div class="grp"><div class="gh">Case Identification</div><div class="gb">
     ${txt('name','Name',true)}
-    ${txt('dept','Department')}
+    ${sel('dept','Department',OPT.dept)}
     ${txt('ward','Ward')}
     ${txt('ic','No. IC')}
     ${num('age','Age')}
@@ -708,33 +752,33 @@ function buildForm(r){
     ${sel('symHypo','Hypotension (SBP≤90mmHg)',OPT.yn,true)}
   </div></div>
 
-  <div class="grp"><div class="gh">Investigation Criteria</div><div class="chk">
-    ${check('adm48','≥ 48 hours admission')}
-    ${check('dialysis','Dialysis within 30 days')}
-    ${check('surgery','Surgery within 30 days')}
-    ${check('onco','Ambulatory onco therapy')}
-    ${check('surgImplant','Surgical implant')}
-    ${check('icu24','ICU ≥ 24 hours')}
-    ${check('newborn24','Newborn ≥ 24 hours')}
-    ${check('abResist','Antibiotic resistance')}
-    ${check('procedure48','Procedure within 48 hrs')}
+  <div class="grp"><div class="gh">Investigation Criteria</div><div class="gb">
+    ${sel('adm48','≥ 48 hours admission',OPT.yn)}
+    ${sel('dialysis','Dialysis within 30 days',OPT.yn)}
+    ${sel('surgery','Surgery within 30 days',OPT.yn)}
+    ${sel('onco','Ambulatory onco therapy',OPT.yn)}
+    ${sel('surgImplant','Surgical implant',OPT.yn)}
+    ${sel('icu24','ICU ≥ 24 hours',OPT.yn)}
+    ${sel('newborn24','Newborn ≥ 24 hours',OPT.yn)}
+    ${sel('abResist','Antibiotic resistance',OPT.yn)}
+    ${sel('procedure48','Procedure within 48 hrs',OPT.yn)}
   </div></div>
 
-  <div class="grp"><div class="gh">Predisposing Factors</div><div class="chk">
-    ${check('haema','Hematology condition')}
-    ${check('oncoCond','Oncology condition')}
-    ${check('immuno','Immunosuppressive therapy')}
-    ${check('parenteral','Parenteral nutrition')}
-    ${check('organTx','Solid organ transplant')}
-    ${check('prosthetic','Prosthetic implant')}
-    ${check('noRisk','No risk factor')}
+  <div class="grp"><div class="gh">Predisposing Factors</div><div class="gb">
+    ${sel('haema','Hematology condition',OPT.yn)}
+    ${sel('oncoCond','Oncology condition',OPT.yn)}
+    ${sel('immuno','Immunosuppressive therapy',OPT.yn)}
+    ${sel('parenteral','Parenteral nutrition',OPT.yn)}
+    ${sel('organTx','Solid organ transplant',OPT.yn)}
+    ${sel('prosthetic','Prosthetic implant',OPT.yn)}
+    ${sel('noRisk','No risk factor',OPT.yn)}
   </div></div>
 
-  <div class="grp"><div class="gh">Device</div><div class="chk">
-    ${check('centralLine','Central Line',"toggleDev('cvc',this.checked)")}
-    ${check('umbilical','Umbilical Catheter',"toggleDev('umb',this.checked)")}
-    ${check('arterial','Arterial Line',"toggleDev('art',this.checked)")}
-    ${check('peripheral','Peripheral Venous Line',"toggleDev('pv',this.checked)")}
+  <div class="grp"><div class="gh">Device</div><div class="gb">
+    ${sel('centralLine','Central Line',OPT.yn,false,"toggleDev('cvc',this.value==='YES')")}
+    ${sel('umbilical','Umbilical Catheter',OPT.yn,false,"toggleDev('umb',this.value==='YES')")}
+    ${sel('arterial','Arterial Line',OPT.yn,false,"toggleDev('art',this.value==='YES')")}
+    ${sel('peripheral','Peripheral Venous Line',OPT.yn,false,"toggleDev('pv',this.value==='YES')")}
   </div>
   <div class="devdetails">
     ${devBlock('cvc','Central Line (CVC)',current.centralLine,'cvcInsert','cvcRemove','cvcSite',OPT.cvcSite)}
@@ -861,6 +905,9 @@ function collect(){
   keys.forEach(k=>{
     const el=document.getElementById('fld_'+k);
     if(!el) return;
+    // Kalau ada checkbox NA utk field tarikh ni & ditick -> simpan 'NA'
+    const naBox=document.getElementById('na_'+k);
+    if(naBox && naBox.checked){ d[k]='NA'; return; }
     if(el.type==='checkbox') d[k]=el.checked?'YES':'';
     else if(el.dataset && el.dataset.dtfield) d[k]=fromISOdt(el.value);   // datetime -> M/D/YY HH:MM
     else if(el.dataset && el.dataset.datefield) d[k]=fromISO(el.value);    // date -> M/D/YY
