@@ -140,12 +140,12 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
 @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:translateY(0);opacity:1}}
 .shead{
   position:sticky;top:0;background:linear-gradient(135deg,var(--maroon),var(--maroon-dk));
-  color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:5;
+  color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:20;
 }
 .shead>div:first-child{min-width:0;flex:1}
 .shead h2{font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shead .x{background:rgba(255,255,255,.25);border:none;color:#fff;min-width:44px;height:44px;border-radius:10px;font-size:1.3rem;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700}
-.shead .x:active{background:rgba(255,255,255,.4)}
+.shead .x{background:#fff;border:none;color:var(--maroon);min-width:46px;height:46px;border-radius:12px;font-size:1.4rem;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.shead .x:active{transform:scale(.94);background:#f0e6e6}
 .shead .sm{font-size:.74rem;opacity:.85;margin-top:2px}
 .form{padding:16px 18px}
 .grp{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
@@ -195,6 +195,7 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
 .btn{flex:1;padding:13px;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit}
 .btn.draft{background:var(--amber-bg);color:#7a4d00;border:1.5px solid var(--amber)}
 .btn.save{background:var(--green);color:#fff}
+.btn.close-btn{flex:0 0 auto;min-width:64px;background:#efe7e7;color:var(--maroon);border:1.5px solid var(--line)}
 .btn:active{transform:scale(.98)}
 .btn:disabled{opacity:.5;pointer-events:none}
 
@@ -380,6 +381,7 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
     </div>
     <div class="form" id="formBody"></div>
     <div class="actions">
+      <button class="btn close-btn" onclick="closeModal()">Tutup</button>
       <button class="btn draft" id="btnDraft" onclick="save('draft')">Save Draft</button>
       <button class="btn save"  id="btnSave"  onclick="save('complete')">Mark Complete</button>
     </div>
@@ -566,6 +568,9 @@ async function openDetail(no){
     if(!data.ok) throw new Error(data.error);
     current=data.record;
     buildForm(current);
+    // auto-besarkan kotak Remarks ikut teks sedia ada
+    const rm=document.getElementById('fld_remarks');
+    if(rm){ rm.style.height='auto'; rm.style.height=rm.scrollHeight+'px'; }
   }catch(err){
     document.getElementById('formBody').innerHTML='<div class="empty">'+err.message+'</div>';
   }
@@ -696,7 +701,9 @@ function sel(key,label,opts,full,onchange){
 }
 function area(key,label){
   const v=current[key]==null?'':current[key];
-  return `<div class="f full"><label>${label}</label><textarea id="fld_${key}">${esc(v)}</textarea></div>`;
+  // Remarks: kotak lebih tinggi + auto-besar ikut teks supaya nampak semua
+  const tall = key==='remarks' ? ' style="min-height:100px" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'"' : '';
+  return `<div class="f full"><label>${label}</label><textarea id="fld_${key}"${tall}>${esc(v)}</textarea></div>`;
 }
 function field(type,key,label,full){
   const v=current[key]==null?'':current[key];
