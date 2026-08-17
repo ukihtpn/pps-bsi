@@ -601,10 +601,11 @@ async function openDetail(no){
     current=data.record;
     buildForm(current);
     // auto-besarkan kotak Remarks/Reason ikut teks sedia ada
-    ['remarks','reasonAdm','reasonBloodCS'].forEach(function(k){
-      const t=document.getElementById('fld_'+k);
+    ['remarks','reasonAdm','reasonBloodCS'].forEach(function(k){      const t=document.getElementById('fld_'+k);
       if(t){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
     });
+    // populate BSI Source ikut category sedia ada
+    onBsiCatChange(String(current.bsiCategory||''));
   }catch(err){
     document.getElementById('formBody').innerHTML='<div class="empty">'+err.message+'</div>';
   }
@@ -740,10 +741,31 @@ function area(key,label){
   const tall = big ? ' style="min-height:80px" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'"' : '';
   return `<div class="f full"><label>${label}</label><textarea id="fld_${key}"${tall}>${esc(v)}</textarea></div>`;
 }
-/* Bila organism = Others, papar hint suruh tulis nama kuman dlm Remarks */
+/* Bila organism = Others, papar kotak nama kuman */
 function onOrgChange(val){
-  const h=document.getElementById('orgOtherHint');
+  const h=document.getElementById('orgOtherBox');
   if(h) h.style.display = (val==='Others') ? 'block' : 'none';
+}
+
+/* Pilihan BSI Source ikut Category */
+const BSI_SOURCE={
+  Primary:['','Unknown source Primary BSI','PVC','Others'],
+  Secondary:['','Urinary tract infection (UTI)','Respiratory tract infection',
+    'Skin / soft tissue infection','Gastrointestinal infection',
+    'Central nervous system (CNS) infection','Others']
+};
+function onBsiCatChange(cat){
+  const box=document.getElementById('bsiSourceBox');
+  const seln=document.getElementById('fld_bsiSource');
+  if(!box||!seln) return;
+  const opts=BSI_SOURCE[cat];
+  if(!opts){ box.style.display='none'; seln.innerHTML=''; return; }
+  box.style.display='block';
+  const cur=String(current.bsiSource||'');
+  // kalau nilai semasa tak dlm senarai, tambah supaya tak hilang
+  let list=opts.slice();
+  if(cur && !list.includes(cur)) list.push(cur);
+  seln.innerHTML=list.map(o=>`<option value="${esc(o)}" ${o===cur?'selected':''}>${o===''?'—':o}</option>`).join('');
 }
 function field(type,key,label,full){
   const v=current[key]==null?'':current[key];
@@ -894,6 +916,7 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">Antibiotic 1</div><div class="gb">
     ${sel('ab1grp','Group',OPT.abGroup)}
+    ${txt('ab1name','Nama Antibiotik',true)}
     ${dateF('ab1date','Date commenced')}
     ${sel('ab1ind','Indication',OPT.abInd)}
     ${sel('ab1dur','Duration',OPT.abDur)}
@@ -902,6 +925,7 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">Antibiotic 2</div><div class="gb">
     ${sel('ab2grp','Group',OPT.abGroup)}
+    ${txt('ab2name','Nama Antibiotik',true)}
     ${dateF('ab2date','Date commenced')}
     ${sel('ab2ind','Indication',OPT.abInd)}
     ${sel('ab2dur','Duration',OPT.abDur)}
@@ -911,8 +935,9 @@ function buildForm(r){
   <div class="grp"><div class="gh">Microbiology & Outcome</div><div class="gb">
     ${dtF('sampleDate','Date of Sample (tarikh & masa)',true)}
     ${sel('organism','Isolated Organism',OPT.organism,true,"onOrgChange(this.value)")}
-    <div class="f full" id="orgOtherHint" style="display:${String(current.organism||'')==='Others'?'block':'none'}">
-      <div class="orghint">ℹ️ Organism = "Others" — sila nyatakan nama kuman dalam kotak <b>Remarks</b> (Clinical Symptoms).</div>
+    <div class="f full" id="orgOtherBox" style="display:${String(current.organism||'')==='Others'?'block':'none'}">
+      <label>Organism Others — Nyatakan nama kuman</label>
+      <input id="fld_organismOther" type="text" value="${esc(current.organismOther==null?'':current.organismOther)}" placeholder="cth: Chryseobacterium indologenes">
     </div>
     ${sel('outcome','Outcome',OPT.outcome)}
     ${sel('contribDeath','BSI Contributed to Death',OPT.ynb)}
@@ -921,7 +946,11 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">BSI Classification</div><div class="gb">
     ${sel('bsiType','BSI Type',OPT.bsiType)}
-    ${sel('bsiCategory','BSI Category',OPT.bsiCategory)}
+    ${sel('bsiCategory','BSI Category',OPT.bsiCategory,false,"onBsiCatChange(this.value)")}
+    <div class="f full" id="bsiSourceBox" style="display:${(current.bsiCategory==='Primary'||current.bsiCategory==='Secondary')?'block':'none'}">
+      <label>BSI Source</label>
+      <select id="fld_bsiSource"></select>
+    </div>
     <div class="f full"><button type="button" class="autobtn" onclick="autoBsiType()">⚡ Auto-tentukan BSI Type</button>
       <div class="autohint" id="autoHint"></div></div>
   </div></div>
@@ -1003,10 +1032,10 @@ function collect(){
     'adm48','dialysis','surgery','onco','surgImplant','icu24','newborn24','abResist','procedure48',
     'haema','oncoCond','immuno','parenteral','organTx','prosthetic','noRisk',
     'centralLine','umbilical','arterial','peripheral',
-    'ab1grp','ab1date','ab1ind','ab1dur','ab1policy',
-    'ab2grp','ab2date','ab2ind','ab2dur','ab2policy',
-    'sampleDate','organism','outcome','contribDeath','finalDx',
-    'symFever','symChills','symHypo','bsiType','bsiCategory','remarks','reasonAdm','reasonBloodCS',
+    'ab1grp','ab1date','ab1ind','ab1dur','ab1policy','ab1name',
+    'ab2grp','ab2date','ab2ind','ab2dur','ab2policy','ab2name',
+    'sampleDate','organism','organismOther','outcome','contribDeath','finalDx',
+    'symFever','symChills','symHypo','bsiType','bsiCategory','bsiSource','remarks','reasonAdm','reasonBloodCS',
     'cvcInsert','cvcRemove','cvcSite','umbInsert','umbRemove','umbSite',
     'artInsert','artRemove','artSite','pvInsert','pvRemove','pvSite',
     'cvc2Insert','cvc2Remove','cvc2Site','cvc3Insert','cvc3Remove','cvc3Site',
