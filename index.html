@@ -325,7 +325,7 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
   <!-- ===== VIEW: DASHBOARD ===== -->
   <div class="view" id="view-dash">
     <div class="dashwrap" id="dashContent">
-      <div class="dloading">Memuatkan dashboard…</div>
+      <div class="dloading">Loading dashboard…</div>
     </div>
   </div>
 
@@ -342,36 +342,36 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
       <span><span class="dot y"></span>In progress / draft</span>
       <span><span class="dot r"></span>Not started</span>
     </div>
-    <div class="search"><input id="q" placeholder="Cari nama / ward / No / IC..." oninput="render()"></div>
+    <div class="search"><input id="q" placeholder="Search name / ward / No / IC..." oninput="render()"></div>
     <div class="filters">
       <select id="fZone" onchange="render()">
-        <option value="">Semua Zone (semua pesakit)</option>
+        <option value="">All Zones (all patients)</option>
         <option value="1-16">Dr Aneesa (No 1–16)</option>
         <option value="17-33">ICN Mariam (No 17–33)</option>
         <option value="34-50">ICN Maria (No 34–50)</option>
         <option value="51-66">Dr Saihah (No 51–66)</option>
         <option value="67-80">ICN Rosena (No 67–80)</option>
       </select>
-      <label class="f48"><input type="checkbox" id="f48" onchange="render()"> ≥48j admission = YES sahaja</label>
+      <label class="f48"><input type="checkbox" id="f48" onchange="render()"> ≥48h admission (hide NO only)</label>
     </div>
     <div id="list" class="list"></div>
   </div>
 
   <!-- ===== VIEW: TRAINING ===== -->
   <div class="view" id="view-train">
-    <div class="pagehead"><h2>📚 Training</h2><p>Video &amp; bahan latihan surveilans BSI</p></div>
+    <div class="pagehead"><h2>📚 Training</h2><p>BSI surveillance training videos &amp; materials</p></div>
     <div id="trainContent" class="cards-col"></div>
   </div>
 
   <!-- ===== VIEW: INFO ===== -->
   <div class="view" id="view-info">
-    <div class="pagehead"><h2>ℹ️ Info</h2><p>Panduan &amp; definisi BSI</p></div>
+    <div class="pagehead"><h2>ℹ️ Info</h2><p>BSI guidelines &amp; definitions</p></div>
     <div id="infoContent" class="cards-col"></div>
   </div>
 
   <!-- ===== VIEW: FEEDBACK ===== -->
   <div class="view" id="view-feedback">
-    <div class="pagehead"><h2>💬 Feedback</h2><p>Cadangan &amp; laporan masalah</p></div>
+    <div class="pagehead"><h2>💬 Feedback</h2><p>Suggestions &amp; problem reports</p></div>
     <div id="feedbackContent" class="cards-col"></div>
   </div>
 
@@ -380,7 +380,7 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
     <button class="tab" data-view="dash" onclick="switchTab('dash')">
       <span class="ti">📊</span><span class="tl">Dashboard</span></button>
     <button class="tab active" data-view="list" onclick="switchTab('list')">
-      <span class="ti">📋</span><span class="tl">Pesakit</span></button>
+      <span class="ti">📋</span><span class="tl">Patients</span></button>
     <button class="tab" data-view="train" onclick="switchTab('train')">
       <span class="ti">📚</span><span class="tl">Training</span></button>
     <button class="tab" data-view="info" onclick="switchTab('info')">
@@ -398,11 +398,11 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
         <h2 id="mName">—</h2>
         <div class="sm" id="mSub">—</div>
       </div>
-      <button class="x" onclick="closeModal()" title="Tutup / Batal" aria-label="Tutup">✕</button>
+      <button class="x" onclick="closeModal()" title="Close / Cancel" aria-label="Tutup">✕</button>
     </div>
     <div class="form" id="formBody"></div>
     <div class="actions">
-      <button class="btn close-btn" onclick="closeModal()">Tutup</button>
+      <button class="btn close-btn" onclick="closeModal()">Close</button>
       <button class="btn draft" id="btnDraft" onclick="save('draft')">Save Draft</button>
       <button class="btn save"  id="btnSave"  onclick="save('complete')">Mark Complete</button>
     </div>
@@ -426,9 +426,9 @@ const USERS = [
 /* ====== TRAINING VIDEOS (edit link Google Drive di sini) ======
    Tukar 'url' kepada link kongsi Google Drive anda. */
 const TRAINING = [
-  { title:'Pengenalan Surveilans BSI', desc:'Video asas definisi & kriteria BSI mengikut MOH.', url:'' },
-  { title:'Cara Isi Borang PPS', desc:'Panduan langkah demi langkah guna app ini.', url:'' },
-  { title:'Klasifikasi BSI (A1/A2/B/CVC-BSI)', desc:'Bagaimana tentukan jenis BSI ikut checklist.', url:'' },
+  { title:'Introduction to BSI Surveillance', desc:'Basic video on BSI definitions & criteria per MOH.', url:'' },
+  { title:'How to Fill the PPS Form', desc:'Step-by-step guide to using this app.', url:'' },
+  { title:'BSI Classification (A1/A2/B/CVC-BSI)', desc:'How to determine BSI type using the checklist.', url:'' },
 ];
 
 /* ====== TAB SWITCHING ====== */
@@ -506,16 +506,16 @@ function logout(){
 /* ====== LOAD LIST ====== */
 async function load(){
   document.getElementById('list').innerHTML =
-    '<div class="loading"><div class="spin"></div>Memuatkan senarai pesakit…</div>';
+    '<div class="loading"><div class="spin"></div>Loading patient list…</div>';
   try{
     const res = await fetch(GAS_URL+'?action=list');
     const data = await res.json();
-    if(!data.ok) throw new Error(data.error||'Gagal');
+    if(!data.ok) throw new Error(data.error||'Failed');
     ALL = data.rows;
     render();
   }catch(err){
     document.getElementById('list').innerHTML =
-      '<div class="empty">Tak dapat sambung ke Google Sheet.<br><small>'+err.message+'</small><br><br>Pastikan Web App di-deploy "Anyone".</div>';
+      '<div class="empty">Cannot connect to Google Sheet.<br><small>'+err.message+'</small><br><br>Pastikan Web App di-deploy "Anyone".</div>';
   }
 }
 
@@ -537,7 +537,8 @@ function render(){
   }
   // Filter ≥48j admission = YES
   if(only48){
-    rows=rows.filter(r=>String(r.adm48||'').trim().toUpperCase()==='YES');
+    // Tunjuk YES + kosong; sorok NO sahaja
+    rows=rows.filter(r=>String(r.adm48||'').trim().toUpperCase()!=='NO');
   }
 
   // stats (ikut hasil filter zone, sebelum search & 48h)
@@ -560,7 +561,7 @@ function render(){
 
   const list=document.getElementById('list');
   if(!rows.length){
-    list.innerHTML='<div class="empty">Tiada pesakit sepadan.</div>';
+    list.innerHTML='<div class="empty">No matching patients.</div>';
     return;
   }
   list.innerHTML=rows.map(r=>{
@@ -589,9 +590,9 @@ function esc(s){return String(s==null?'':s).replace(/[<>&]/g,m=>({'<':'&lt;','>'
 /* ====== OPEN DETAIL ====== */
 async function openDetail(no){
   const modal=document.getElementById('modal');
-  document.getElementById('formBody').innerHTML='<div class="loading"><div class="spin"></div>Memuatkan…</div>';
+  document.getElementById('formBody').innerHTML='<div class="loading"><div class="spin"></div>Loading…</div>';
   document.getElementById('mName').textContent='No '+no;
-  document.getElementById('mSub').textContent='Memuatkan…';
+  document.getElementById('mSub').textContent='Loading…';
   modal.classList.add('open');
   document.body.style.overflow='hidden';
   try{
@@ -613,7 +614,7 @@ async function openDetail(no){
 function closeModal(force){
   // Kalau ada perubahan belum simpan, minta pengesahan dulu
   if(!force && dirtySinceOpen()){
-    if(!confirm('Tutup borang? Perubahan yang belum disimpan akan hilang.')) return;
+    if(!confirm('Close form? Unsaved changes will be lost.')) return;
   }
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow='';
@@ -792,14 +793,14 @@ function devBlockMulti(id,title,checkedVal,lines,siteOpts){
     inner+=`<div class="devline" id="line_${id}_${i}" style="display:${hasData?'block':'none'}">`+
       (i>0?`<div class="devlnum">Line ${i+1}</div>`:'')+
       `<div class="devg">`+
-      dateFNA(ik,'Tarikh Masuk (Insert)')+
-      dateFNA(rk,'Tarikh Cabut (Remove)')+
-      sel(sk,'Lokasi (Site)',siteOpts,true)+
+      dateFNA(ik,'Insert Date')+
+      dateFNA(rk,'Remove Date')+
+      sel(sk,'Site',siteOpts,true)+
       `</div></div>`;
   }
   // butang + Tambah (kalau ada lebih 1 line)
   const addBtn = lines.length>1
-    ? `<button type="button" class="adddev" id="add_${id}" onclick="addDevLine('${id}',${lines.length})">+ Tambah ${title}</button>`
+    ? `<button type="button" class="adddev" id="add_${id}" onclick="addDevLine('${id}',${lines.length})">+ Add ${title}</button>`
     : '';
   return `<div class="devbox" id="dev_${id}" style="display:${on?'block':'none'}">`+
     `<div class="devt">${title}</div>${inner}${addBtn}</div>`;
@@ -824,9 +825,9 @@ function devBlock(id,title,checkedVal,insertKey,removeKey,siteKey,siteOpts){
   const on = v==='YES'||v==='TRUE'||v==='1'||v==='✓'||v==='X';
   return `<div class="devbox" id="dev_${id}" style="display:${on?'block':'none'}">`+
     `<div class="devt">${title}</div><div class="devg">`+
-    dateFNA(insertKey,'Tarikh Masuk (Insert)')+
-    dateFNA(removeKey,'Tarikh Cabut (Remove)')+
-    sel(siteKey,'Lokasi (Site)',siteOpts,true)+
+    dateFNA(insertKey,'Insert Date')+
+    dateFNA(removeKey,'Remove Date')+
+    sel(siteKey,'Site',siteOpts,true)+
     `</div></div>`;
 }
 
@@ -838,7 +839,7 @@ function dateFNA(key,label){
   return `<div class="f"><label>${label}</label>`+
     `<input id="fld_${key}" type="date" value="${iso}" data-datefield="1" ${isNA?'disabled':''}>`+
     `<label class="nachk"><input type="checkbox" id="na_${key}" ${isNA?'checked':''} `+
-    `onchange="toggleNA('${key}',this.checked)"> Tiada tarikh (NA)</label></div>`;
+    `onchange="toggleNA('${key}',this.checked)"> No date (NA)</label></div>`;
 }
 /* Toggle NA: disable/enable date input */
 function toggleNA(key,isNA){
@@ -874,7 +875,7 @@ function buildForm(r){
     ${sel('symHypo','Hypotension (SBP≤90mmHg)',OPT.yn,true)}
     ${area('reasonAdm','Reason for Admission')}
     ${area('reasonBloodCS','Reason for Blood C&S')}
-    ${area('remarks','Remarks / Maklumat Tambahan / History')}
+    ${area('remarks','Remarks / Additional Information / History')}
   </div></div>
 
   <div class="grp"><div class="gh">Investigation Criteria</div><div class="gb">
@@ -916,7 +917,7 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">Antibiotic 1</div><div class="gb">
     ${sel('ab1grp','Group',OPT.abGroup)}
-    ${txt('ab1name','Nama Antibiotik',true)}
+    ${txt('ab1name','Antibiotic Name',true)}
     ${dateF('ab1date','Date commenced')}
     ${sel('ab1ind','Indication',OPT.abInd)}
     ${sel('ab1dur','Duration',OPT.abDur)}
@@ -925,7 +926,7 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">Antibiotic 2</div><div class="gb">
     ${sel('ab2grp','Group',OPT.abGroup)}
-    ${txt('ab2name','Nama Antibiotik',true)}
+    ${txt('ab2name','Antibiotic Name',true)}
     ${dateF('ab2date','Date commenced')}
     ${sel('ab2ind','Indication',OPT.abInd)}
     ${sel('ab2dur','Duration',OPT.abDur)}
@@ -936,8 +937,8 @@ function buildForm(r){
     ${dtF('sampleDate','Date of Sample (tarikh & masa)',true)}
     ${sel('organism','Isolated Organism',OPT.organism,true,"onOrgChange(this.value)")}
     <div class="f full" id="orgOtherBox" style="display:${String(current.organism||'')==='Others'?'block':'none'}">
-      <label>Organism Others — Nyatakan nama kuman</label>
-      <input id="fld_organismOther" type="text" value="${esc(current.organismOther==null?'':current.organismOther)}" placeholder="cth: Chryseobacterium indologenes">
+      <label>Organism Others — Specify organism name</label>
+      <input id="fld_organismOther" type="text" value="${esc(current.organismOther==null?'':current.organismOther)}" placeholder="e.g. Chryseobacterium indologenes">
     </div>
     ${sel('outcome','Outcome',OPT.outcome)}
     ${sel('contribDeath','BSI Contributed to Death',OPT.ynb)}
@@ -951,7 +952,7 @@ function buildForm(r){
       <label>BSI Source</label>
       <select id="fld_bsiSource"></select>
     </div>
-    <div class="f full"><button type="button" class="autobtn" onclick="autoBsiType()">⚡ Auto-tentukan BSI Type</button>
+    <div class="f full"><button type="button" class="autobtn" onclick="autoBsiType()">⚡ Auto-determine BSI Type</button>
       <div class="autohint" id="autoHint"></div></div>
   </div></div>
   `;
@@ -970,7 +971,7 @@ function validateComplete(d){
     symHypo:'Clinical Symptom · Hypotension',
     sampleDate:'Date of Sample', organism:'Isolated Organism',
     outcome:'Outcome', contribDeath:'BSI Contributed to Death', finalDx:'Diagnosis',
-    bsiType:'BSI Type (tekan Auto atau pilih; NA jika tiada)',
+    bsiType:'BSI Type (press Auto or select; NA if none)',
     bsiCategory:'BSI Category (Primary/Secondary/NA)'
   };
   for(const k in need){
@@ -985,12 +986,12 @@ function validateComplete(d){
   ];
   devs.forEach(([chk,nm,ins,site])=>{
     if(String(d[chk]||'').toUpperCase()==='YES'){
-      if(!String(d[site]||'').trim()) missing.push('Device '+nm+' · Lokasi/Site (pilih NA jika tak pasti)');
-      if(!String(d[ins]||'').trim())  missing.push('Device '+nm+' · Tarikh Masuk');
+      if(!String(d[site]||'').trim()) missing.push('Device '+nm+' · Site (select NA if unsure)');
+      if(!String(d[ins]||'').trim())  missing.push('Device '+nm+' · Insert Date');
     }
   });
   // Antibiotic 1 - wajib pilih Group (isi NA kalau takde antibiotik)
-  if(!String(d.ab1grp||'').trim()) missing.push('Antibiotic 1 · Group (pilih NA jika tiada)');
+  if(!String(d.ab1grp||'').trim()) missing.push('Antibiotic 1 · Group (select NA if none)');
   else if(d.ab1grp!=='NA'){
     if(!String(d.ab1date||'').trim()) missing.push('Antibiotic 1 · Date commenced');
     if(!String(d.ab1ind||'').trim())  missing.push('Antibiotic 1 · Indication');
@@ -1078,25 +1079,25 @@ function autoBsiType(){
 
   let type='', why='';
   if(!org){
-    why='Tiada organism — sila isi Isolated Organism dulu.';
+    why='No organism — please fill Isolated Organism first.';
   } else if(!commensal){
     type='BSI-A1';
-    why='Organism = pathogen (bukan skin commensal) → BSI-A1 (satu kultur positif pathogen).';
+    why='Organism = pathogen (not skin commensal) → BSI-A1 (one positive pathogen culture).';
   } else {
     if(hasSymptom && hasAB){
       type='BSI-B';
-      why='Skin commensal + simptom klinikal + antibiotik dimulakan → BSI-B (suspected).';
+      why='Skin commensal + clinical symptom + antibiotic started → BSI-B (suspected).';
     } else if(hasSymptom){
       type='BSI-A2';
-      why='Skin commensal + simptom klinikal → BSI-A2 (perlu 2 kultur positif dari 2 sampel dlm 48j utk sahkan).';
+      why='Skin commensal + clinical symptom → BSI-A2 (needs 2 positive cultures from 2 samples within 48h to confirm).';
     } else {
       type='';
-      why='Skin commensal tapi tiada simptom — mungkin kontaminasi. Tandakan simptom kalau ada.';
+      why='Skin commensal but no symptom — possible contamination. Mark symptom if present.';
     }
   }
   if(type && hasCVC){
     type='CVC-BSI';
-    why+=' Ada Central Line (CVC) → dikelaskan CVC-BSI. (Pastikan CVC ≥2 hari sebelum kultur / dicabut sehari sebelum.)';
+    why+=' Has Central Line (CVC) → classified as CVC-BSI. (Ensure CVC ≥2 days before culture / removed a day before.)';
   }
 
   const s=document.getElementById('fld_bsiType');
@@ -1146,7 +1147,7 @@ async function save(mode){
     toast(mode==='complete'?'✓ Marked Complete':'Draft saved');
     closeModal(true); render();
   }catch(err){
-    toast('Gagal simpan: '+err.message);
+    toast('Save failed: '+err.message);
   }finally{
     bd.disabled=bs.disabled=false;
   }
@@ -1161,9 +1162,9 @@ function showMissingBox(list){
     const fb=document.getElementById('formBody');
     fb.insertBefore(box, fb.firstChild);
   }
-  box.innerHTML='<b>⚠ Belum boleh Tandai Lengkap.</b> Medan wajib diisi:<ul>'+
+  box.innerHTML='<b>⚠ Cannot Mark Complete yet.</b> Required fields:<ul>'+
     list.map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
-    '<span class="hint">Tip: kalau pesakit tiada antibiotik, pilih <b>NA</b> pada Antibiotic 1 · Group.</span>';
+    '<span class="hint">Tip: if patient has no antibiotic, select <b>NA</b> for Antibiotic 1 · Group.</span>';
   box.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
 
@@ -1182,7 +1183,7 @@ function toast(msg){
 let DASH=null;
 async function loadDashboard(){
   const box=document.getElementById('dashContent');
-  box.innerHTML='<div class="dloading">Memuatkan dashboard…</div>';
+  box.innerHTML='<div class="dloading">Loading dashboard…</div>';
   try{
     const res=await fetch(GAS_URL+'?action=dashboard');
     const j=await res.json();
@@ -1190,7 +1191,7 @@ async function loadDashboard(){
     DASH=j.data; dashLoaded=true;
     renderDashboard(j.data);
   }catch(e){
-    box.innerHTML='<div class="dsec">⚠️ Gagal muat dashboard: '+e.message+
+    box.innerHTML='<div class="dsec">⚠️ Failed to load dashboard: '+e.message+
       '<br><br>Pastikan Code.gs versi terbaru sudah deploy (New version).</div>';
   }
 }
@@ -1216,7 +1217,7 @@ function vbars(items, unit, emptyMsg){
   const vals=items.map(x=>x.value==null?0:x.value);
   const max=Math.max(1, ...vals);
   const hasData=items.some(x=>x.value!=null && x.value>0);
-  if(!hasData) return `<div class="dnote">${emptyMsg||'Tiada nilai lagi — key-in denominator (admission) dalam Sect B dulu.'}</div>`;
+  if(!hasData) return `<div class="dnote">${emptyMsg||'No values yet — key in the denominator (admission) in Sect B first.'}</div>`;
   const cols=items.map(x=>{
     const v=x.value==null?null:x.value;
     const h= v==null?0:Math.round(v/max*130);
@@ -1240,14 +1241,14 @@ function renderDashboard(d){
   const deptFull=['Anaesthesiology','Cardiaology','Dermatology','Haemotology','Medical',
     'Nephrology','O&G','Oncology','Orthopaedic','Others','Paediatric','Surgical','Urology'];
   const deptBars=deptFull.filter(x=>(d.dept&&d.dept[x])).map(x=>bar(x,d.dept[x],total)).join('')
-    || '<div class="dnote">Tiada kes ikut department lagi.</div>';
+    || '<div class="dnote">No cases by department yet.</div>';
 
   // Rate & % ikut department dari Sect B (kolum E & C). Buang baris 'Hospital'.
   const dr=(d.deptRate||[]).filter(r=>r.dept.toUpperCase()!=='HOSPITAL');
   const rateChart=vbars(dr.map(r=>({label:shortDept(r.dept),value:r.rate})),'',
-    'Rate belum ada — key-in Total Admission department dalam Sect B (kolum D) dulu.');
+    'Rate not available — key in department Total Admission in Sect B (column D) first.');
   const pctChart=vbars(dr.map(r=>({label:shortDept(r.dept),value:r.pct})),'%',
-    'Peratus belum ada.');
+    'Percentage not available.');
 
   const invLabels=['≥48h admission','Dialysis 30d','Surgery 30d','Ambulatory onco','Surgical implant','ICU≥24h','Newborn≥24h','Antibiotic resistance'];
   const invBars=invLabels.map((l,i)=>bar(l,(d.invest&&d.invest[i])||0,total,'teal')).join('');
@@ -1256,12 +1257,12 @@ function renderDashboard(d){
   const devBars=devLabels.map((l,i)=>bar(l,(d.device&&d.device[i])||0,total,'gold')).join('');
 
   const orgKeys=Object.keys(d.organism||{}).sort((a,b)=>d.organism[b]-d.organism[a]);
-  const orgBars=orgKeys.length? orgKeys.map(k=>bar(k,d.organism[k],total)).join('') : '<div class="dnote">Tiada data organism.</div>';
+  const orgBars=orgKeys.length? orgKeys.map(k=>bar(k,d.organism[k],total)).join('') : '<div class="dnote">No organism data.</div>';
 
   // Antibiotic
   const abGKeys=Object.keys(d.abGroup||{}).sort((a,b)=>d.abGroup[b]-d.abGroup[a]);
   const abGTotal=abGKeys.reduce((s,k)=>s+d.abGroup[k],0);
-  const abGBars=abGKeys.length? abGKeys.map(k=>bar(k,d.abGroup[k],abGTotal,'gold')).join('') : '<div class="dnote">Tiada data antibiotik.</div>';
+  const abGBars=abGKeys.length? abGKeys.map(k=>bar(k,d.abGroup[k],abGTotal,'gold')).join('') : '<div class="dnote">No antibiotic data.</div>';
   const indKeys=['Empirical','Therapeutic','Prophylaxis'];
   const indTotal=indKeys.reduce((s,k)=>s+((d.abInd&&d.abInd[k])||0),0);
   const indBars=indKeys.map(k=>bar(k,(d.abInd&&d.abInd[k])||0,indTotal,'teal')).join('');
@@ -1277,12 +1278,12 @@ function renderDashboard(d){
 
   document.getElementById('dashContent').innerHTML=`
     <div class="dsec">
-      <h3>Ringkasan Keseluruhan</h3>
+      <h3>Overall Summary</h3>
       <div class="kpis">
         <div class="kpi"><div class="v">${total}</div><div class="k">Total BSI Cases</div></div>
         <div class="kpi gold"><div class="v">${cl}</div><div class="k">CLABSI</div></div>
         <div class="kpi teal"><div class="v">${ncl}</div><div class="k">Non-CLABSI</div></div>
-        <div class="kpi slate"><div class="v">${d.outcome.died||0}</div><div class="k">Kematian (BSI)</div></div>
+        <div class="kpi slate"><div class="v">${d.outcome.died||0}</div><div class="k">Deaths (BSI)</div></div>
       </div>
     </div>
 
@@ -1345,7 +1346,7 @@ function renderDashboard(d){
     </div>
 
     <div class="dnote" style="text-align:center;padding-bottom:8px">
-      Sheet laporan MOH (Sect A &amp; Sect B) dikemaskini automatik setiap kali data pesakit disimpan.
+      MOH report sheets (Sect A &amp; Sect B) are updated automatically each time patient data is saved.
       Rate &amp; peratus akan keluar bila Total Admission di-key-in dalam Sect B.
     </div>
   `;
@@ -1372,7 +1373,7 @@ async function recomputeB(){
     const j=await res.json();
     if(!j.ok) throw new Error(j.error);
     note.textContent='✅ Sect B dikemaskini. Total '+j.total+' kes. (% & rate ikut formula sheet)';
-  }catch(e){ note.textContent='⚠️ Gagal: '+e.message; }
+  }catch(e){ note.textContent='⚠️ Failed: '+e.message; }
 }
 async function recomputeWard(){
   const ward=document.getElementById('wardSel').value;
@@ -1384,7 +1385,7 @@ async function recomputeWard(){
     const j=await res.json();
     if(!j.ok) throw new Error(j.error);
     note.textContent='✅ Sect A: ward '+j.ward+' = '+j.count+' kes BSI ditulis ke B18.';
-  }catch(e){ note.textContent='⚠️ Gagal: '+e.message; }
+  }catch(e){ note.textContent='⚠️ Failed: '+e.message; }
 }
 
 /* ====== TRAINING ====== */
@@ -1394,8 +1395,8 @@ function renderTraining(){
     <div class="ic">
       <h4>${esc(t.title)}</h4>
       <p>${esc(t.desc)}</p>
-      ${t.url? `<a class="vidbtn" href="${esc(t.url)}" target="_blank" rel="noopener">▶ Tonton Video</a>`
-             : `<p style="color:var(--muted);margin-top:8px;font-size:.78rem">🔗 Link video belum ditetapkan.</p>`}
+      ${t.url? `<a class="vidbtn" href="${esc(t.url)}" target="_blank" rel="noopener">▶ Watch Video</a>`
+             : `<p style="color:var(--muted);margin-top:8px;font-size:.78rem">🔗 Video link not set yet.</p>`}
     </div>`).join('');
 }
 
@@ -1403,33 +1404,33 @@ function renderTraining(){
 function renderInfo(){
   document.getElementById('infoContent').innerHTML=`
     <div class="ic">
-      <h4>Apa itu BSI?</h4>
-      <p>Bloodstream Infection (BSI) ialah jangkitan yang disahkan melalui kultur darah positif. Surveilans ini mengikut garis panduan MOH (BSI/MOH/2015).</p>
+      <h4>What is BSI?</h4>
+      <p>Bloodstream Infection (BSI) is an infection confirmed by a positive blood culture. This surveillance follows MOH guidelines (BSI/MOH/2015).</p>
     </div>
     <div class="ic">
-      <h4>Jenis BSI</h4>
+      <h4>BSI Types</h4>
       <ul>
-        <li><b>BSI-A1</b> — Satu kultur darah positif untuk patogen bakteria/kulat yang diiktiraf.</li>
-        <li><b>BSI-A2</b> — Simptom klinikal + DUA kultur positif skin commensal dari 2 sampel berasingan dalam 48 jam.</li>
-        <li><b>BSI-B</b> — Simptom klinikal + SATU kultur positif skin commensal + antibiotik dimulakan.</li>
-        <li><b>CVC-BSI</b> — Memenuhi A1/A2/B DAN ada central line ≥2 hari sebelum kultur (atau dicabut sehari sebelum).</li>
+        <li><b>BSI-A1</b> — One positive blood culture for a recognised bacterial/fungal pathogen.</li>
+        <li><b>BSI-A2</b> — Clinical symptoms + TWO positive skin commensal cultures from 2 separate samples within 48 hours.</li>
+        <li><b>BSI-B</b> — Clinical symptoms + ONE positive skin commensal culture + antibiotic started.</li>
+        <li><b>CVC-BSI</b> — Meets A1/A2/B AND central line present ≥2 days before culture (or removed a day before).</li>
       </ul>
     </div>
     <div class="ic">
-      <h4>Kriteria Klinikal</h4>
+      <h4>Clinical Criteria</h4>
       <ul>
-        <li>Demam (&gt;38°C)</li>
-        <li>Menggigil (chills)</li>
-        <li>Hipotensi (SBP ≤ 90 mmHg)</li>
+        <li>Fever (&gt;38°C)</li>
+        <li>Chills</li>
+        <li>Hypotension (SBP ≤ 90 mmHg)</li>
       </ul>
     </div>
     <div class="ic">
       <h4>CLABSI vs Non-CLABSI</h4>
-      <p>CLABSI = Central Line-Associated BSI. Dalam app ini, kes dengan jenis <b>CVC-BSI</b> dikira sebagai CLABSI untuk laporan Sect B.</p>
+      <p>CLABSI = Central Line-Associated BSI. In this app, cases with type <b>CVC-BSI</b> are counted as CLABSI for the Sect B report.</p>
     </div>
     <div class="ic">
-      <h4>Hubungi UKI HTPN</h4>
-      <p>Untuk pertanyaan surveilans, sila hubungi Unit Kawalan Infeksi (UKI), Hospital Tengku Permaisuri Norashikin.</p>
+      <h4>Contact UKI HTPN</h4>
+      <p>For surveillance enquiries, please contact the Infection Control Unit (UKI), Hospital Tengku Permaisuri Norashikin.</p>
     </div>`;
 }
 
@@ -1437,13 +1438,13 @@ function renderInfo(){
 function renderFeedback(){
   document.getElementById('feedbackContent').innerHTML=`
     <div class="ic">
-      <h4>Hantar Maklum Balas</h4>
-      <p style="margin-bottom:12px">Cadangan penambahbaikan atau lapor masalah app.</p>
-      <div class="fbfield"><label>Jenis</label>
-        <select id="fbType"><option>Cadangan</option><option>Masalah / Bug</option><option>Pertanyaan</option></select></div>
-      <div class="fbfield"><label>Mesej</label>
-        <textarea id="fbMsg" placeholder="Tulis di sini…"></textarea></div>
-      <button class="recalc-btn" style="width:100%" onclick="sendFeedback()">Hantar</button>
+      <h4>Send Feedback</h4>
+      <p style="margin-bottom:12px">Suggestions for improvement or report app issues.</p>
+      <div class="fbfield"><label>Type</label>
+        <select id="fbType"><option>Suggestion</option><option>Problem / Bug</option><option>Question</option></select></div>
+      <div class="fbfield"><label>Message</label>
+        <textarea id="fbMsg" placeholder="Write here…"></textarea></div>
+      <button class="recalc-btn" style="width:100%" onclick="sendFeedback()">Send</button>
       <div class="dnote" id="fbNote"></div>
     </div>`;
 }
@@ -1451,7 +1452,7 @@ function sendFeedback(){
   const type=document.getElementById('fbType').value;
   const msg=document.getElementById('fbMsg').value.trim();
   const note=document.getElementById('fbNote');
-  if(!msg){ note.textContent='⚠️ Sila tulis mesej dulu.'; return; }
+  if(!msg){ note.textContent='⚠️ Please write a message first.'; return; }
   // Hantar via WhatsApp (senang & tak perlu backend tambahan)
   const text=encodeURIComponent('[BSI PPS App Feedback]\nJenis: '+type+'\nOleh: '+(USER?USER.name:'-')+'\n\n'+msg);
   window.open('https://wa.me/?text='+text,'_blank');
