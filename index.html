@@ -93,6 +93,16 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
   width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;
   font-size:.92rem;background:var(--card);
 }
+.filters{padding:0 16px 12px;display:flex;flex-direction:column;gap:9px}
+.filters select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:.88rem;background:var(--card);font-weight:600;color:var(--maroon)}
+.filters .f48{display:flex;align-items:center;gap:9px;font-size:.85rem;background:#faf6f6;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.filters .f48 input{width:18px;height:18px;accent-color:var(--maroon);cursor:pointer}
+.orghint{background:var(--amber-bg);border:1px solid var(--amber);border-radius:8px;padding:9px 11px;font-size:.78rem;color:#7a4d00;line-height:1.4}
+.devline{border-top:1px dashed var(--line);padding-top:10px;margin-top:10px}
+.devline:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.devlnum{font-size:.72rem;font-weight:700;color:var(--maroon);margin-bottom:6px;opacity:.8}
+.adddev{margin-top:10px;width:100%;padding:9px;background:#fff;border:1.5px dashed var(--maroon);color:var(--maroon);border-radius:8px;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.adddev:active{background:#faf6f6}
 
 /* List */
 .list{padding:0 16px;display:flex;flex-direction:column;gap:12px}
@@ -333,6 +343,17 @@ header .sub{font-size:.68rem;opacity:.8;margin-top:1px;text-transform:uppercase;
       <span><span class="dot r"></span>Not started</span>
     </div>
     <div class="search"><input id="q" placeholder="Cari nama / ward / No / IC..." oninput="render()"></div>
+    <div class="filters">
+      <select id="fZone" onchange="render()">
+        <option value="">Semua Zone (semua pesakit)</option>
+        <option value="1-16">Dr Aneesa (No 1–16)</option>
+        <option value="17-33">ICN Mariam (No 17–33)</option>
+        <option value="34-50">ICN Maria (No 34–50)</option>
+        <option value="51-66">Dr Saihah (No 51–66)</option>
+        <option value="67-80">ICN Rosena (No 67–80)</option>
+      </select>
+      <label class="f48"><input type="checkbox" id="f48" onchange="render()"> ≥48j admission = YES sahaja</label>
+    </div>
     <div id="list" class="list"></div>
   </div>
 
@@ -504,16 +525,27 @@ function statusLabel(s){ const n=normStatus(s); return n==='complete'?'Complete'
 
 /* ====== RENDER LIST ====== */
 function render(){
-  const u=USER;
   const q=document.getElementById('q').value.trim().toUpperCase();
-  let rows=ALL.slice();
+  const zone=document.getElementById('fZone').value;      // "" atau "1-16"
+  const only48=document.getElementById('f48').checked;
+  let rows=ALL.slice();   // SEMUA pesakit
 
-  if(u) rows=rows.filter(r=>Number(r.no)>=u.from && Number(r.no)<=u.to);
+  // Filter zone (kalau dipilih)
+  if(zone){
+    const [a,b]=zone.split('-').map(Number);
+    rows=rows.filter(r=>Number(r.no)>=a && Number(r.no)<=b);
+  }
+  // Filter ≥48j admission = YES
+  if(only48){
+    rows=rows.filter(r=>String(r.adm48||'').trim().toUpperCase()==='YES');
+  }
 
-  // stats (ikut julat staff, sebelum search filter)
-  const tot=rows.length;
-  const g=rows.filter(r=>normStatus(r.status)==='complete').length;
-  const y=rows.filter(r=>normStatus(r.status)==='draft').length;
+  // stats (ikut hasil filter zone, sebelum search & 48h)
+  let statRows=ALL.slice();
+  if(zone){ const [a,b]=zone.split('-').map(Number); statRows=statRows.filter(r=>Number(r.no)>=a&&Number(r.no)<=b); }
+  const tot=statRows.length;
+  const g=statRows.filter(r=>normStatus(r.status)==='complete').length;
+  const y=statRows.filter(r=>normStatus(r.status)==='draft').length;
   const rr=tot-g-y;
   document.getElementById('sReview').textContent=tot;
   document.getElementById('sDone').textContent=g;
@@ -528,7 +560,7 @@ function render(){
 
   const list=document.getElementById('list');
   if(!rows.length){
-    list.innerHTML='<div class="empty">Tiada pesakit dalam julat anda.</div>';
+    list.innerHTML='<div class="empty">Tiada pesakit sepadan.</div>';
     return;
   }
   list.innerHTML=rows.map(r=>{
@@ -568,9 +600,11 @@ async function openDetail(no){
     if(!data.ok) throw new Error(data.error);
     current=data.record;
     buildForm(current);
-    // auto-besarkan kotak Remarks ikut teks sedia ada
-    const rm=document.getElementById('fld_remarks');
-    if(rm){ rm.style.height='auto'; rm.style.height=rm.scrollHeight+'px'; }
+    // auto-besarkan kotak Remarks/Reason ikut teks sedia ada
+    ['remarks','reasonAdm','reasonBloodCS'].forEach(function(k){
+      const t=document.getElementById('fld_'+k);
+      if(t){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
+    });
   }catch(err){
     document.getElementById('formBody').innerHTML='<div class="empty">'+err.message+'</div>';
   }
@@ -701,9 +735,15 @@ function sel(key,label,opts,full,onchange){
 }
 function area(key,label){
   const v=current[key]==null?'':current[key];
-  // Remarks: kotak lebih tinggi + auto-besar ikut teks supaya nampak semua
-  const tall = key==='remarks' ? ' style="min-height:100px" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'"' : '';
+  // Remarks & reason: kotak lebih tinggi + auto-besar ikut teks supaya nampak semua
+  const big = (key==='remarks'||key==='reasonAdm'||key==='reasonBloodCS');
+  const tall = big ? ' style="min-height:80px" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'"' : '';
   return `<div class="f full"><label>${label}</label><textarea id="fld_${key}"${tall}>${esc(v)}</textarea></div>`;
+}
+/* Bila organism = Others, papar hint suruh tulis nama kuman dlm Remarks */
+function onOrgChange(val){
+  const h=document.getElementById('orgOtherHint');
+  if(h) h.style.display = (val==='Others') ? 'block' : 'none';
 }
 function field(type,key,label,full){
   const v=current[key]==null?'':current[key];
@@ -717,6 +757,46 @@ function check(key,label,onchange){
 }
 
 /* Blok butiran device (Insert/Remove/Site) - papar bila device di-tick */
+/* Blok device dgn sokongan berbilang line (+Tambah).
+   lines = array of [insertKey, removeKey, siteKey] utk setiap line. */
+function devBlockMulti(id,title,checkedVal,lines,siteOpts){
+  const v=String(checkedVal||'').toUpperCase();
+  const on = v==='YES'||v==='TRUE'||v==='1'||v==='✓'||v==='X';
+  let inner='';
+  for(let i=0;i<lines.length;i++){
+    const [ik,rk,sk]=lines[i];
+    // line 1 sentiasa papar; line 2+ papar kalau ada data
+    const hasData = i===0 || [ik,rk,sk].some(k=>String(current[k]||'').trim()!=='');
+    inner+=`<div class="devline" id="line_${id}_${i}" style="display:${hasData?'block':'none'}">`+
+      (i>0?`<div class="devlnum">Line ${i+1}</div>`:'')+
+      `<div class="devg">`+
+      dateFNA(ik,'Tarikh Masuk (Insert)')+
+      dateFNA(rk,'Tarikh Cabut (Remove)')+
+      sel(sk,'Lokasi (Site)',siteOpts,true)+
+      `</div></div>`;
+  }
+  // butang + Tambah (kalau ada lebih 1 line)
+  const addBtn = lines.length>1
+    ? `<button type="button" class="adddev" id="add_${id}" onclick="addDevLine('${id}',${lines.length})">+ Tambah ${title}</button>`
+    : '';
+  return `<div class="devbox" id="dev_${id}" style="display:${on?'block':'none'}">`+
+    `<div class="devt">${title}</div>${inner}${addBtn}</div>`;
+}
+/* Papar line device seterusnya yg tersembunyi */
+function addDevLine(id,maxLines){
+  for(let i=1;i<maxLines;i++){
+    const el=document.getElementById('line_'+id+'_'+i);
+    if(el && el.style.display==='none'){ el.style.display='block'; break; }
+  }
+  // sembunyi butang kalau semua line dah papar
+  let allShown=true;
+  for(let i=1;i<maxLines;i++){
+    const el=document.getElementById('line_'+id+'_'+i);
+    if(el && el.style.display==='none') allShown=false;
+  }
+  if(allShown){ const btn=document.getElementById('add_'+id); if(btn) btn.style.display='none'; }
+}
+
 function devBlock(id,title,checkedVal,insertKey,removeKey,siteKey,siteOpts){
   const v=String(checkedVal||'').toUpperCase();
   const on = v==='YES'||v==='TRUE'||v==='1'||v==='✓'||v==='X';
@@ -763,13 +843,15 @@ function buildForm(r){
     ${sel('ageGroup','Age Group',OPT.ageGroup)}
     ${sel('gender','Gender',OPT.gender)}
     ${dateF('admDate','Date of Admission')}
-    ${area('diagnosis','Clinical Diagnosis')}
+    ${area('diagnosis','Clinical Diagnosis during Blood C&S Positive')}
   </div></div>
 
-  <div class="grp"><div class="gh">Clinical Symptoms</div><div class="gb">
+  <div class="grp"><div class="gh">Clinical Symptom during Blood Sample Positive</div><div class="gb">
     ${sel('symFever','Fever &gt;38°C',OPT.yn)}
     ${sel('symChills','Chills',OPT.yn)}
     ${sel('symHypo','Hypotension (SBP≤90mmHg)',OPT.yn,true)}
+    ${area('reasonAdm','Reason for Admission')}
+    ${area('reasonBloodCS','Reason for Blood C&S')}
     ${area('remarks','Remarks / Maklumat Tambahan / History')}
   </div></div>
 
@@ -785,16 +867,6 @@ function buildForm(r){
     ${sel('procedure48','Procedure within 48 hrs',OPT.yn)}
   </div></div>
 
-  <div class="grp"><div class="gh">Predisposing Factors</div><div class="gb">
-    ${sel('haema','Hematology condition',OPT.yn)}
-    ${sel('oncoCond','Oncology condition',OPT.yn)}
-    ${sel('immuno','Immunosuppressive therapy',OPT.yn)}
-    ${sel('parenteral','Parenteral nutrition',OPT.yn)}
-    ${sel('organTx','Solid organ transplant',OPT.yn)}
-    ${sel('prosthetic','Prosthetic implant',OPT.yn)}
-    ${sel('noRisk','No risk factor',OPT.yn)}
-  </div></div>
-
   <div class="grp"><div class="gh">Device</div><div class="gb">
     ${sel('centralLine','Central Line',OPT.yn,false,"toggleDev('cvc',this.value==='YES')")}
     ${sel('umbilical','Umbilical Catheter',OPT.yn,false,"toggleDev('umb',this.value==='YES')")}
@@ -802,10 +874,22 @@ function buildForm(r){
     ${sel('peripheral','Peripheral Venous Line',OPT.yn,false,"toggleDev('pv',this.value==='YES')")}
   </div>
   <div class="devdetails">
-    ${devBlock('cvc','Central Line (CVC)',current.centralLine,'cvcInsert','cvcRemove','cvcSite',OPT.cvcSite)}
-    ${devBlock('umb','Umbilical Catheter',current.umbilical,'umbInsert','umbRemove','umbSite',OPT.umbSite)}
-    ${devBlock('art','Arterial Line',current.arterial,'artInsert','artRemove','artSite',OPT.artSite)}
-    ${devBlock('pv','Peripheral Venous Line',current.peripheral,'pvInsert','pvRemove','pvSite',OPT.pvSite)}
+    ${devBlockMulti('cvc','Central Line (CVC)',current.centralLine,[
+      ['cvcInsert','cvcRemove','cvcSite'],
+      ['cvc2Insert','cvc2Remove','cvc2Site'],
+      ['cvc3Insert','cvc3Remove','cvc3Site'],
+      ['cvc4Insert','cvc4Remove','cvc4Site']],OPT.cvcSite)}
+    ${devBlockMulti('umb','Umbilical Catheter',current.umbilical,[
+      ['umbInsert','umbRemove','umbSite'],
+      ['umb2Insert','umb2Remove','umb2Site']],OPT.umbSite)}
+    ${devBlockMulti('art','Arterial Line',current.arterial,[
+      ['artInsert','artRemove','artSite'],
+      ['art2Insert','art2Remove','art2Site']],OPT.artSite)}
+    ${devBlockMulti('pv','Peripheral Venous Line',current.peripheral,[
+      ['pvInsert','pvRemove','pvSite'],
+      ['pv2Insert','pv2Remove','pv2Site'],
+      ['pv3Insert','pv3Remove','pv3Site'],
+      ['pv4Insert','pv4Remove','pv4Site']],OPT.pvSite)}
   </div></div>
 
   <div class="grp"><div class="gh">Antibiotic 1</div><div class="gb">
@@ -826,7 +910,10 @@ function buildForm(r){
 
   <div class="grp"><div class="gh">Microbiology & Outcome</div><div class="gb">
     ${dtF('sampleDate','Date of Sample (tarikh & masa)',true)}
-    ${sel('organism','Isolated Organism',OPT.organism,true)}
+    ${sel('organism','Isolated Organism',OPT.organism,true,"onOrgChange(this.value)")}
+    <div class="f full" id="orgOtherHint" style="display:${String(current.organism||'')==='Others'?'block':'none'}">
+      <div class="orghint">ℹ️ Organism = "Others" — sila nyatakan nama kuman dalam kotak <b>Remarks</b> (Clinical Symptoms).</div>
+    </div>
     ${sel('outcome','Outcome',OPT.outcome)}
     ${sel('contribDeath','BSI Contributed to Death',OPT.ynb)}
     ${sel('finalDx','Diagnosis',OPT.finalDx,true)}
@@ -919,9 +1006,14 @@ function collect(){
     'ab1grp','ab1date','ab1ind','ab1dur','ab1policy',
     'ab2grp','ab2date','ab2ind','ab2dur','ab2policy',
     'sampleDate','organism','outcome','contribDeath','finalDx',
-    'symFever','symChills','symHypo','bsiType','bsiCategory','remarks',
+    'symFever','symChills','symHypo','bsiType','bsiCategory','remarks','reasonAdm','reasonBloodCS',
     'cvcInsert','cvcRemove','cvcSite','umbInsert','umbRemove','umbSite',
-    'artInsert','artRemove','artSite','pvInsert','pvRemove','pvSite'];
+    'artInsert','artRemove','artSite','pvInsert','pvRemove','pvSite',
+    'cvc2Insert','cvc2Remove','cvc2Site','cvc3Insert','cvc3Remove','cvc3Site',
+    'cvc4Insert','cvc4Remove','cvc4Site','umb2Insert','umb2Remove','umb2Site',
+    'art2Insert','art2Remove','art2Site',
+    'pv2Insert','pv2Remove','pv2Site','pv3Insert','pv3Remove','pv3Site',
+    'pv4Insert','pv4Remove','pv4Site'];
   const d={};
   keys.forEach(k=>{
     const el=document.getElementById('fld_'+k);
