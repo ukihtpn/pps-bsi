@@ -528,7 +528,7 @@ function render(){
   const q=document.getElementById('q').value.trim().toUpperCase();
   const zone=document.getElementById('fZone').value;      // "" atau "1-16"
   const only48=document.getElementById('f48').checked;
-  let rows=ALL.slice();   // SEMUA pesakit
+  let rows=ALL.slice().filter(r=>String(r.no||'').trim()!=='' && String(r.name||'').trim()!=='');   // pesakit sah: ada No & nama
 
   // Filter zone (kalau dipilih)
   if(zone){
@@ -542,7 +542,7 @@ function render(){
   }
 
   // stats (ikut hasil filter zone, sebelum search & 48h)
-  let statRows=ALL.slice();
+  let statRows=ALL.slice().filter(r=>String(r.no||'').trim()!=='' && String(r.name||'').trim()!=='');
   if(zone){ const [a,b]=zone.split('-').map(Number); statRows=statRows.filter(r=>Number(r.no)>=a&&Number(r.no)<=b); }
   const tot=statRows.length;
   const g=statRows.filter(r=>normStatus(r.status)==='complete').length;
